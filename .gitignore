@@ -1,0 +1,8 @@
+chroma_db/
+.heal/
+__pycache__/
+.pytest_cache/
+dist/
+.env
+.env.local
+sds-ax-c1-06.env

@@ -1,0 +1,7 @@
+{
+  "name": "sample-js-head",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "교육용 더미 데이터입니다. 언어를 넘는 패턴 전이 실험용 JS 샘플입니다."
+}

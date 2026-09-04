@@ -1,0 +1,66 @@
+{
+  "timestamp": "2026-09-03T10:00:50",
+  "max_attempts": 3,
+  "cases": [
+    {
+      "id": "fix-py-index",
+      "role": "warmup",
+      "family": "경계/부재 접근",
+      "language": "python",
+      "status": "fixed",
+      "fixed": true,
+      "attempts": 1,
+      "duration_sec": 34.6,
+      "memory_hit_count": 3,
+      "injected_count": 2,
+      "user_input": "double_at 함수 호출 시 IndexError와 TypeError가 발생합니다. 구체적으로 1) 인덱스가 리스트 범위를 벗어날 때 IndexError, 2) 음수 인덱스가 리스트 길이를 초과할 때 IndexError, 3) items가 None일 때 TypeError가 발생합니다. 원인: 함수가 인덱스 접근 전에 경계 검사를 수행하지 않습니다. items가 유효한 리스트인지, index가 리스트의 유효한 범위 내에 있는지 확인하지 않고 바로 items[index]에 접근하여 예외가 발생합니다. 해결 방향: 인덱스 접근 전에 경계 조건을 검사해야 합니다. items가 None이거나 리스트가 아닌 경우, 또는 index가 리스트의 유효 범위를 벗어나는 경우(양수/음수 모두)를 확인하고, 이러한 경우에는 기본값 0을 반환하도록 처리합니다.",
+      "retrieved_contexts": [
+        "# 경계 검사 누락 ## IndexError 또는 TypeError 예외 발생 ### 인덱스 접근 전 items가 None인지, index가 유효 범위 내인지 검사하지 않아 발생하며, 접근 전 유효성 검사 후 유효하지 않으면 기본값 0 반환하도록 수정",
+        "# 경계 검사 누락 ## IndexError, TypeError (None 객체 인덱스 접근) ### 인덱스 유효성 검사 없이 접근 시도. items가 None이 아닌 유효한 리스트인지, index가 범위 내인지 검사 후 유효하지 않으면 기본값 반환"
+      ],
+      "response": "--- a/boundary.py\n+++ b/boundary.py\n@@ -7,4 +7,8 @@\n \n def double_at(items, index):\n     \"\"\"리스트의 index 번째 값을 두 배로 돌려줍니다.\"\"\"\n+    if items is None:\n+        return 0\n+    if index < 0 or index >= len(items):\n+        return 0\n     return items[index] * 2\n",
+      "reference": "리스트가 None 인지, 인덱스가 0 이상이며 길이 미만인지를 먼저 검사하고, 범위를 벗어나면 예외를 새로 던지지 않고 기본값 0 을 반환한다. 함수 이름과 시그니처는 그대로 유지한다."
+    },
+    {
+      "id": "fix-py-dict",
+      "role": "eval",
+      "family": "경계/부재 접근",
+      "language": "python",
+      "status": "fixed",
+      "fixed": true,
+      "attempts": 1,
+      "duration_sec": 26.7,
+      "memory_hit_count": 3,
+      "injected_count": 2,
+      "user_input": "세 가지 예외가 발생했습니다. 1) 존재하지 않는 키 'zzz'로 접근 시 KeyError 발생, 2) mapping이 None일 때 subscript 연산 시 TypeError 발생, 3) 값이 None인 경우 upper() 메서드 호출 시 AttributeError 발생. 테스트는 이런 경우 빈 문자열을 반환하길 기대했습니다. 원인: 함수가 예외 상황에 대한 방어 로직이 전혀 없습니다. mapping이 None인지, key가 존재하는지, 값이 None인지 검사하지 않고 바로 접근하여 연산을 수행하려 했기 때문입니다. 해결 방향: 함수 시작 부분에서 mapping이 None인지 확인하고, key 존재 여부를 검사하며, 값이 None인지 확인하는 방어 코드를 추가해야 합니다. 이러한 예외 상황에서는 빈 문자열을 반환하도록 처리해야 합니다.",
+      "retrieved_contexts": [
+        "# None 및 존재하지 않는 키/인덱스에 대한 방어 로직 누락 ## KeyError, TypeError (NoneType subscriptable, NoneType has no upper), AttributeError, IndexError ### 매핑/리스트/값의 None 여부, 키 존재 여부, 인덱스 범위를 검증하지 않고 접근하여 발생. 함수 시작 시 조건 검사로 조기 반환하거나 순차적으로 검증하거나 try-except로 예외 포착 후 기본값(빈 문자열 등) 반환.",
+        "# 예외 상황 미처리 (None/키 부재) ## KeyError, TypeError, AttributeError 발생 ### mapping/키/값의 None 및 존재 여부를 검증하지 않고 직접 접근(mapping[key].upper() 등)하여 발생하므로, 각 단계(mapping None 체크, key 존재 여부 확인, 값 None 체크)마다 방어 로직을 추가한 후 실패 시 빈 문자열 반환"
+      ],
+      "response": "--- a/lookup.py\n+++ b/lookup.py\n@@ -7,4 +7,11 @@\n \n def label_of(mapping, key):\n     \"\"\"매핑에서 key 의 값을 찾아 대문자로 돌려줍니다.\"\"\"\n-    return mapping[key].upper()\n+    if mapping is None:\n+        return \"\"\n+    if key not in mapping:\n+        return \"\"\n+    value = mapping[key]\n+    if value is None:\n+        return \"\"\n+    return value.upper()\n",
+      "reference": "매핑이 None 인지, 키가 존재하는지, 값이 None 인지를 차례로 확인하고, 어느 하나라도 아니면 KeyError 나 AttributeError 를 일으키지 않고 빈 문자열을 반환한다. 정상 경로에서는 값을 대문자로 변환한다."
+    },
+    {
+      "id": "fix-js-head",
+      "role": "eval",
+      "family": "경계/부재 접근",
+      "language": "javascript",
+      "status": "fixed",
+      "fixed": true,
+      "attempts": 1,
+      "duration_sec": 21.1,
+      "memory_hit_count": 3,
+      "injected_count": 1,
+      "user_input": "빈 배열을 입력하면 'Cannot read properties of undefined (reading toUpperCase)' 에러가 발생하고, null을 입력하면 'Cannot read properties of null (reading 0)' 에러가 발생합니다. 정상 입력만 통과하고 엣지 케이스 2개가 실패합니다. 원인: 함수가 배열의 첫 번째 원소에 무조건 접근하여 toUpperCase 메서드를 호출하는데, 빈 배열일 경우 list[0]이 undefined를 반환하고, null이나 undefined 입력일 경우 인덱스 접근 자체가 실패합니다. 입력 유효성 검사와 배열 길이 확인이 없습니다. 해결 방향: 함수 시작 부분에서 입력이 배열인지, 그리고 배열이 비어있지 않은지 확인하는 가드 조건을 추가해야 합니다. 조건을 만족하지 않으면 빈 문자열을 반환하도록 처리합니다.",
+      "retrieved_contexts": [
+        "# 배열 접근 전 유효성 검사 누락 ## 빈 배열 시 'Cannot read properties of undefined (reading toUpperCase)' 또는 'Cannot read properties of undefined', null 입력 시 'Cannot read properties of null (reading 0)' 또는 'Cannot read properties of null' 에러 ### 배열 첫 원소에 무조건 접근하여 발생하며, 함수 시작부에 null/undefined/빈 배열 검사 가드 조건을 추가하고 예외 케이스는 빈 문자열 반환"
+      ],
+      "response": "--- a/head.js\n+++ b/head.js\n@@ -5,5 +5,8 @@\n // --cross-language 로 언어 격리를 풀었을 때 패턴이 전이되는지 보는 실험 재료입니다.\n \n export function headUpper(list) {\n+  if (!list || list.length === 0) {\n+    return '';\n+  }\n   return list[0].toUpperCase();\n }\n",
+      "reference": "배열이 null 이거나 비어 있으면 undefined 를 역참조하지 않고 빈 문자열을 반환하고, 원소가 있을 때만 대문자로 변환한다. ESM export 형태와 함수 시그니처는 유지한다."
+    }
+  ],
+  "ragas": {
+    "status": "skipped",
+    "reason": "의존성 없음: No module named 'ragas'. `pip install -r requirements.txt` 후 다시 실행하십시오."
+  }
+}

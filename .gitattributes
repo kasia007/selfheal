@@ -1,0 +1,27 @@
+# 줄바꿈 정규화 — 이 프로젝트(mini-pjt_pete/) 하위에만 적용됩니다.
+#
+# 왜 필요한가: 에이전트는 수정할 파일의 줄바꿈을 **그대로 보존**합니다
+# (src/agent.py 의 detect_newline · write_source, 가드레일 문서의 P13-1·2).
+# 그런데 git 이 체크아웃할 때마다 줄바꿈을 바꿔 버리면, 보존의 기준이 되는 "원본" 자체가
+# 환경마다 달라집니다. Windows 에서 checkout → CRLF, Linux CI 에서 checkout → LF 가 되어
+# 같은 커밋인데도 diff 결과가 갈립니다.
+#
+# 그래서 저장소에는 LF 로 저장하고, **체크아웃할 때도 LF 를 유지**합니다.
+# tests/test_guardrails.py 의 CRLF 회귀 테스트는 파일을 바이트 단위로 CRLF 로 바꿔
+# 쓰므로, 이 설정과 무관하게 그대로 유효합니다.
+* text=auto eol=lf
+
+# 샘플은 테스트 판정의 기준이므로 줄바꿈을 특히 고정해 둡니다.
+data/samples/** text eol=lf
+
+# 실행 스크립트는 CRLF 가 섞이면 셸이 깨집니다.
+*.sh text eol=lf
+Dockerfile text eol=lf
+
+# 바이너리 — 손대지 않습니다.
+*.zip binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
+*.bin binary

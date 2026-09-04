@@ -1,0 +1,19 @@
+# selfheal 실행에 필요한 의존성입니다.
+# 저장소 공통 스택(AGENTS.md — Amazon Bedrock)을 그대로 따릅니다.
+
+# ── 에이전트 본체 ──────────────────────────────────────────
+langgraph>=0.2
+langchain-core>=0.3
+langchain-aws>=0.2          # ChatBedrock (Claude Sonnet 4.5) · BedrockEmbeddings (Titan)
+chromadb>=0.5               # 버그 패턴 메모리 (PersistentClient)
+rank-bm25>=0.2              # 하이브리드 검색의 키워드 축 (벡터와 RRF 로 융합)
+pydantic>=2.7
+
+# ── 대상 코드 검증 ─────────────────────────────────────────
+# 파이썬 샘플의 성공 판정 기준입니다. (JS 는 node 내장 러너, Go 는 go test)
+pytest>=8.4
+
+# ── 평가 ───────────────────────────────────────────────────
+# evaluation/run_ragas.py 가 씁니다. 에이전트 실행 자체에는 필요 없습니다.
+ragas>=0.2
+datasets>=2.19

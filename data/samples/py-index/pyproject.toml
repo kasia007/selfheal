@@ -1,0 +1,5 @@
+# 교육용 더미 데이터입니다. selfheal 에이전트의 1회차(학습용) 파이썬 샘플입니다.
+# pytest 가 상위 디렉터리까지 거슬러 올라가지 않도록 여기서 rootdir 를 끊습니다.
+[project]
+name = "sample-py-index"
+version = "0"
