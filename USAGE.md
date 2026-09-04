@@ -77,14 +77,35 @@ Bedrock **Claude Sonnet 4.5 + Titan 임베딩**에 접근 가능한 AWS 계정�
 설치가 따로 필요 없습니다. 이 폴더 안에서 대상 경로만 바꿔 가리키면 됩니다.
 
 ```bash
-./run.sh /path/to/내프로젝트                  # 그냥 실행
-./install-hooks.sh /path/to/내프로젝트        # 커밋·푸시마다 자동 실행 (git 훅 설치)
+./run.sh /path/to/내프로젝트                          # 그냥 실행
+./install-hooks.sh --hook pre-push /path/to/내프로젝트  # push 직전마다 자동 실행 (git 훅 설치)
 ```
 
 대상은 **Python/JavaScript/Go 마커 파일**과 **테스트**가 있어야 합니다(다른 언어는
 `src/tools.py` 의 `ADAPTERS` 에 항목 추가, [README.md](README.md) 8절). 훅은 `--apply`
 를 쓰지 않으니 코드를 몰래 바꾸지 않으며, 안내가 뜨면 대상의 `.gitignore` 에 `.heal/`
 을 추가하십시오.
+
+`--hook` 은 세 가지 중 하나입니다 — 언제 검증할지, 검증 실패가 커밋/푸시를 막는지가
+다릅니다.
+
+| 값 | 시점 | 실패하면 |
+|---|---|---|
+| `pre-push` (권장) | `git push` 직전 | push 를 막음 |
+| `pre-commit` | `git commit` 직전 | 커밋을 막음 (매 커밋마다 돌아 더 잦고 느림) |
+| `post-commit` | 커밋 직후 | 못 막음 — `.heal/post-commit.log` 에 결과만 남김 |
+
+`pre-push` 를 설치했을 때 실제 사용 흐름은 이렇습니다.
+
+1. 평소처럼 코드 수정 → `git add` → `git commit` (이 단계엔 훅이 없어 그대로 진행됩니다)
+2. `git push` → 이 순간 selfheal 이 자동으로 대상 프로젝트의 테스트를 돌립니다.
+   - 통과 → 그대로 push 진행, 할 일 없음
+   - 실패했지만 검증된 수정안이 나옴 → **push 가 막히고** 화면에 `.heal/` 경로가 찍힘
+   - 실패했고 못 고침(참고용 제안만) → push 가 막히고 마찬가지로 `.heal/` 확인 요청
+3. push 가 막혔으면 `.heal/patch.html`(또는 `notice.html`)을 열어 diff·제안을 검토합니다.
+4. 반영하기로 했으면 `./run.sh /path/to/내프로젝트 --apply` 로 원본에 실제로 쓴 뒤
+   다시 `add`·`commit`·`push`. 마음에 안 들면 직접 고쳐서 다시 push 하면 됩니다
+   (테스트가 통과하면 훅은 그냥 지나갑니다).
 
 **주의**: `chroma_db`(학습 메모리)는 이 폴더 기준 하나뿐이라, 여러 프로젝트를 같은
 selfheal 로 돌리면 같은 언어끼리 패턴이 섞입니다. 분리하려면 폴더를 복사하십시오.
