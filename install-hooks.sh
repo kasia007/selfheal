@@ -4,13 +4,18 @@
 #   ./install-hooks.sh                      # 현재 저장소에 pre-push 설치
 #   ./install-hooks.sh /path/to/repo        # 다른 저장소에 설치
 #   ./install-hooks.sh --hook post-commit   # 커밋 직후 알림용으로 설치 (.heal/post-commit.log)
+#   ./install-hooks.sh --hook pre-commit    # 커밋 직전 검증 — 실패하면 커밋을 막음
 #   ./install-hooks.sh --hook both
 #   ./install-hooks.sh --uninstall
 #
-# 훅을 두 종류로 나눈 이유가 있습니다.
+# 훅을 세 종류로 나눈 이유가 있습니다.
 #
 #   pre-push    푸시를 **막을 수 있습니다**. git 이 이 훅의 종료 코드를 봅니다.
 #               그래서 "푸시 전 검증 룰셋" 은 이쪽이어야 의미가 생깁니다. 동기 실행입니다.
+#   pre-commit  커밋을 **막을 수 있습니다**. pre-push 보다 이른 시점이라, 잘못된 커밋이
+#               로컬 히스토리에 아예 안 남는다는 장점이 있는 대신 커밋마다(자주) 돕니다.
+#               G12(커밋 안 된 파일만 수정)와 궁합이 좋습니다 — 지금 커밋하려는 변경분이
+#               곧 "커밋 안 된 파일" 이기 때문입니다.
 #   post-commit 커밋을 막지 못합니다. git 이 종료 코드를 무시하기 때문입니다.
 #               알림 전용이므로 백그라운드로 떼어 터미널을 잡지 않게 만듭니다.
 #
@@ -41,8 +46,8 @@ while [ $# -gt 0 ]; do
 done
 
 case "$hook_kind" in
-    pre-push|post-commit|both) ;;
-    *) echo "--hook 은 pre-push · post-commit · both 중 하나입니다: $hook_kind" >&2; exit 2 ;;
+    pre-push|pre-commit|post-commit|both) ;;
+    *) echo "--hook 은 pre-push · pre-commit · post-commit · both 중 하나입니다: $hook_kind" >&2; exit 2 ;;
 esac
 
 # ── 대상 저장소 확인 ──────────────────────────────────────────
@@ -87,6 +92,7 @@ write_hook() {
 
     case "$kind" in
         pre-push)    body="$PRE_PUSH" ;;
+        pre-commit)  body="$PRE_COMMIT" ;;
         post-commit) body="$POST_COMMIT" ;;
     esac
     printf '%s\n' "$body" \
@@ -112,6 +118,20 @@ case $? in
     # 인프라 제약이므로 3 과 같이 푸시를 막지 않습니다. 막으면 한도가 소진된 날 아무도
     # 푸시할 수 없게 됩니다.
     5)   echo "⚠️  모델을 쓸 수 없어 검증하지 못했습니다($repo/.heal/ 에 진단과 참고 사례). 푸시를 막지 않습니다."; exit 0 ;;
+    *)   echo "❌ 테스트 실패를 스스로 고치지 못했습니다. $repo/.heal/ 를 확인하십시오."; exit 1 ;;
+esac'
+
+# ── pre-commit — pre-push 와 같은 판정, 더 이른 시점에서 커밋 자체를 막습니다 ──
+PRE_COMMIT='#!/usr/bin/env bash
+# selfheal-hook (pre-commit) — install-hooks.sh 가 생성했습니다. 직접 고치지 마십시오.
+PATH="__PYDIR__:$PATH"
+repo="$(git rev-parse --show-toplevel)"
+"__SELFHEAL__/run.sh" "$repo" --dry-run --no-trace
+case $? in
+    0|2) exit 0 ;;
+    4)   echo "🩹 검증된 수정안이 $repo/.heal/ 에 있습니다. 검수 후 다시 커밋하십시오."; exit 1 ;;
+    3)   echo "⚠️  검증 전제를 못 채웠습니다(툴체인·테스트 없음). 커밋을 막지 않습니다."; exit 0 ;;
+    5)   echo "⚠️  모델을 쓸 수 없어 검증하지 못했습니다($repo/.heal/ 에 진단과 참고 사례). 커밋을 막지 않습니다."; exit 0 ;;
     *)   echo "❌ 테스트 실패를 스스로 고치지 못했습니다. $repo/.heal/ 를 확인하십시오."; exit 1 ;;
 esac'
 
